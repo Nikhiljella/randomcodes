@@ -1,0 +1,63 @@
+%%{init: {"theme":"default","flowchart":{"curve":"basis"}} }%%
+flowchart TB
+  %% S3 and Data Lake
+  subgraph S3["🪣 Data Lake (S3 Buckets)"]
+    S3_raw(["![](https://d1.awsstatic.com/icons/Storage/Amazon-S3.svg) S3 - Raw Data"])
+    S3_delta(["![](https://d1.awsstatic.com/icons/Storage/Amazon-S3.svg) S3 - Delta (Insert/Update/Delete)"])
+    S3_archive(["![](https://d1.awsstatic.com/icons/Storage/Amazon-S3.svg) S3 - Archive"])
+  end
+
+  %% Glue and ETL
+  subgraph GlueETL["🧩 ETL Processing"]
+    Glue(["![](https://d1.awsstatic.com/icons/Analytics/AWS-Glue.svg) AWS Glue Jobs"])
+    GlueCatalog(["![](https://d1.awsstatic.com/icons/Analytics/AWS-Glue-Data-Catalog.svg) Glue Data Catalog"])
+    SF(["![](https://d1.awsstatic.com/icons/Application-Integration/AWS-Step-Functions.svg) Step Functions Workflow"])
+  end
+
+  %% OpenSearch & API
+  subgraph OpenSearchAPI["🔍 Search & API Layer"]
+    OS(["![](https://d1.awsstatic.com/icons/Analytics/Amazon-OpenSearch-Service.svg) Amazon OpenSearch"])
+    ECS(["![](https://d1.awsstatic.com/icons/Compute/Amazon-Elastic-Container-Service.svg) ECS Fargate (API Service)"])
+    APIGW(["![](https://d1.awsstatic.com/icons/NetworkingContentDelivery/Amazon-API-Gateway.svg) API Gateway"])
+    ALB(["![](https://d1.awsstatic.com/icons/NetworkingContentDelivery/Elastic-Load-Balancing.svg) ALB / Route53"])
+  end
+
+  %% On-prem & Connectivity
+  subgraph OnPrem["🏢 On-Prem / External"]
+    IDRes(["![](https://d1.awsstatic.com/icons/General/Users.svg) IDRes Platform"])
+    VPN(["![](https://d1.awsstatic.com/icons/NetworkingContentDelivery/AWS-Direct-Connect.svg) Direct Connect / VPN"])
+  end
+
+  %% Security & Monitoring
+  subgraph Security["🔐 Security & Monitoring"]
+    IAM(["![](https://d1.awsstatic.com/icons/SecurityIdentityCompliance/AWS-Identity-and-Access-Management.svg) IAM Roles/Policies"])
+    KMS(["![](https://d1.awsstatic.com/icons/SecurityIdentityCompliance/AWS-Key-Management-Service.svg) KMS Encryption"])
+    CW(["![](https://d1.awsstatic.com/icons/ManagementGovernance/Amazon-CloudWatch.svg) CloudWatch / Alarms"])
+    Guard(["![](https://d1.awsstatic.com/icons/SecurityIdentityCompliance/AWS-GuardDuty.svg) GuardDuty / Config"])
+  end
+
+  %% Data flow
+  IDRes -->|Secure API Calls| APIGW
+  APIGW --> ALB --> ECS
+  ECS -->|Bulk API| OS
+  ECS -->|Reads| S3_delta
+
+  %% ETL Flow
+  S3_raw --> Glue
+  Glue -->|Delta Calc + File Gen| S3_delta
+  Glue --> GlueCatalog
+  Glue -->|Archive| S3_archive
+  SF --> Glue
+
+  %% Security Connections
+  IAM --> Glue
+  IAM --> ECS
+  KMS --> S3_raw
+  KMS --> OS
+  CW --> ECS
+  CW --> Glue
+  Guard --> IAM
+
+  %% On-Prem connectivity
+  VPN --> APIGW
+  VPN --> ECS
